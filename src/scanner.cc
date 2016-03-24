@@ -44,13 +44,14 @@ inline bool IsStringStart(int c) {
   return (c == '\'') || (c == '"');
 }
 
-Scanner::Scanner(Builder* builder, Zone* zone)
-    : builder_(builder)
-    , tokens_(zone)
-    , begin_marker_stack_(zone)
-    , string_literal_buffer_(zone)
-    , input_(NULL)
-    , index_(-1) {
+void Punctuation::Populate(Zone* zone, Token token, const char* string) {
+  if (*string == '\0') {
+    ASSERT(terminal_ == kEOF);
+    terminal_ = token;
+  } else {
+    Punctuation* next = Child(zone, *string);
+    next->Populate(zone, token, string + 1);
+  }
 }
 
 List<TokenInfo> Scanner::EncodedTokens() {
@@ -101,304 +102,72 @@ bool Scanner::ScanToken() {
       // End of file.
       return false;
 
-    case 1:
-    case 2:
-    case 3:
-    case 4:
-    case 5:
-    case 6:
-    case 7:
-    case 8:
-      break;
-
-    case '\t':  // 9
-    case 10:
+    case '\t':
+    case '\n':
+    case '\r':
+    case ' ':
       SkipWhitespace(peek);
       return true;
 
-    case 11:
-    case 12:
-      break;
-
-    case 13:
-      SkipWhitespace(peek);
-      return true;
-
-    case 14:
-    case 15:
-    case 16:
-    case 17:
-    case 18:
-    case 19:
-    case 20:
-    case 21:
-    case 22:
-    case 23:
-    case 24:
-    case 25:
-    case 26:
-    case 27:
-    case 28:
-    case 29:
-    case 30:
-    case 31:
-      break;
-
-    case ' ':  // 32
-      SkipWhitespace(peek);
-      return true;
-
-    case '!':  // 33
-      peek = Advance();
-      if (peek == '=') return ScanSingle(kNE);
-      return RecognizeSingle(peek, kNOT);
-
-    case '"':  // 34
-      return ScanString(peek, /* raw */ false);
-
-    case '#':  // 35
-      return ScanSingle(kHASH);
-
-    case '$':  // 36
+    case '$':
+    case '_':
       return ScanIdentifier(peek);
 
-    case '%':  // 37
-      peek = Advance();
-      if (peek == '=') return ScanSingle(kASSIGN_MOD);
-      return RecognizeSingle(peek, kMOD);
-
-    case '&':  // 38
-      peek = Advance();
-      if (peek == '=') return ScanSingle(kASSIGN_AND);
-      if (peek == '&') return ScanSingle(kAND);
-      return RecognizeSingle(peek, kBIT_AND);
-
-    case '\'':  // 39
+    case '\'':
+    case '"':
       return ScanString(peek, /* raw */ false);
 
-    case '(':  // 40
-      PushTokenBeginMarker(kLPAREN);
-      return ScanSingle(kLPAREN);
-
-    case ')':  // 41
-      PopTokenBeginMarker(kLPAREN);
-      return ScanSingle(kRPAREN);
-
-    case '*':
-      peek = Advance();
-      if (peek == '=') return ScanSingle(kASSIGN_MUL);
-      return RecognizeSingle(peek, kMUL);
-
-    case '+':
-      peek = Advance();
-      if (peek == '=') return ScanSingle(kASSIGN_ADD);
-      if (peek == '+') return ScanSingle(kINCREMENT);
-      return RecognizeSingle(peek, kADD);
-
-    case ',':  // 44
-      return ScanSingle(kCOMMA);
-
-    case '-':  // 45
-      peek = Advance();
-      if (peek == '=') return ScanSingle(kASSIGN_SUB);
-      if (peek == '-') return ScanSingle(kDECREMENT);
-      return RecognizeSingle(peek, kSUB);
-
-    case '.':  // 46
+    case '.':
       if (IsDecimalDigit(Peek())) return ScanNumber('.');
-      peek = Advance();
-      if (peek == '.') return ScanSingle(kCASCADE);
-      return RecognizeSingle(peek, kPERIOD);
-
-    case '/':  // 47
-      peek = Advance();
-      if (peek == '/') return SkipSinglelineComment(peek);
-      if (peek == '*') return SkipMultilineComment(peek);
-      if (peek == '=') return ScanSingle(kASSIGN_DIV);
-      return RecognizeSingle(peek, kDIV);
-
-    case '0':  // 48
-    case '1':
-    case '2':
-    case '3':
-    case '4':
-    case '5':
-    case '6':
-    case '7':
-    case '8':
-    case '9':  // 57
-      return ScanNumber(peek);
-
-    case ':':
-      return ScanSingle(kCOLON);
-
-    case ';':  // 59
-      return ScanSingle(kSEMICOLON);
-
-    case '<':  // 60
-      peek = Advance();
-      if (peek == '=') return ScanSingle(kLTE);
-      if (peek == '<') {
-        peek = Advance();
-        if (peek == '=') return ScanSingle(kASSIGN_SHL);
-        return RecognizeSingle(peek, kSHL);
-      }
-      PushTokenBeginMarker(kLT);
-      return RecognizeSingle(peek, kLT);
-
-    case '=':  // 61
-      peek = Advance();
-      if (peek == '=') return ScanSingle(kEQ);
-      if (peek == '>') return ScanSingle(kARROW);
-      return RecognizeSingle(peek, kASSIGN);
-
-    case '>':  // 62
-      peek = Advance();
-      if (peek == '=') return ScanSingle(kGTE);
-      if (peek == '>') {
-        if (Peek() == '=') {
-          Advance();
-          return ScanSingle(kASSIGN_SHR);
-        }
-        PopTokenBeginMarker(kLT);
-        if (!RecognizeSingle(peek, kGT_START)) return false;
-        PopTokenBeginMarker(kLT);
-        return ScanSingle(kGT);
-      }
-      PopTokenBeginMarker(kLT);
-      return RecognizeSingle(peek, kGT);
-
-    case '?':  // 63
-      return ScanSingle(kCONDITIONAL);
-
-    case '@':  // 64
-      return ScanSingle(kAT);
-
-    case 'A':  // 65
-    case 'B':
-    case 'C':
-    case 'D':
-    case 'E':
-    case 'F':
-    case 'G':
-    case 'H':
-    case 'I':
-    case 'J':
-    case 'K':
-    case 'L':
-    case 'M':
-    case 'N':
-    case 'O':
-    case 'P':
-    case 'Q':
-    case 'R':
-    case 'S':
-    case 'T':
-    case 'U':
-    case 'V':
-    case 'W':
-    case 'X':
-    case 'Y':
-    case 'Z':  // 90
-      return ScanIdentifier(peek);
-
-    case '[':  // 91
-      peek = Advance();
-      if (peek == ']') {
-        if (Peek() == '=') {
-          Advance();
-          return ScanSingle(kASSIGN_INDEX);
-        }
-        return ScanSingle(kINDEX);
-      }
-      return RecognizeSingle(peek, kLBRACK);
-
-    case '\\':  // 92
       break;
 
-    case ']':  // 93
-      return ScanSingle(kRBRACK);
-
-    case '^':  // 94
-      peek = Advance();
-      if (peek == '=') return ScanSingle(kASSIGN_XOR);
-      return RecognizeSingle(peek, kBIT_XOR);
-
-    case '_':  // 95
-      return ScanIdentifier(peek);
-
-    case 96:
+    case '/':
+      if (Peek() == '/') return SkipSinglelineComment(peek);
+      if (Peek() == '*') return SkipMultilineComment(peek);
       break;
 
-    case 'a':  // 97
-    case 'b':
-    case 'c':
-    case 'd':
-    case 'e':
-    case 'f':
-    case 'g':
-    case 'h':
-    case 'i':
-    case 'j':
-    case 'k':
-    case 'l':
-    case 'm':
-    case 'n':
-    case 'o':
-    case 'p':
-    case 'q':
-      return ScanIdentifier(peek);
-
+    // May be raw string.
     case 'r':
-      // May be raw string.
-      return ScanString(peek, /* raw */ true);
-
-    case 's':
-    case 't':
-    case 'u':
-    case 'v':
-    case 'w':
-    case 'x':
-    case 'y':
-    case 'z':  // 122
-      return ScanIdentifier(peek);
-
-    case '{':  // 123
-      PushTokenBeginMarker(kLBRACE);
-      return ScanSingle(kLBRACE);
-
-    case '|':  // 124
-      peek = Advance();
-      if (peek == '|') return ScanSingle(kOR);
-      if (peek == '=') return ScanSingle(kASSIGN_OR);
-      return RecognizeSingle(peek, kBIT_OR);
-
-    case '}':  // 125
-      PopTokenBeginMarker(kLBRACE);
-      return ScanSingle(kRBRACE);
-
-    case '~':  // 126
-      peek = Advance();
-      if (peek == '/') {
-        peek = Advance();
-        if (peek == '=') return ScanSingle(kASSIGN_TRUNCDIV);
-        return RecognizeSingle(peek, kTRUNCDIV);
-      }
-      return RecognizeSingle(peek, kBIT_NOT);
-
-    case 127:
+      if (IsStringStart(Peek())) return ScanString(peek, /* raw */ true);
       break;
   }
 
+  if (peek >= '0' && peek <= '9') return ScanNumber(peek);
+  if (peek >= 'A' && peek <= 'Z') return ScanIdentifier(peek);
+  if (peek >= 'a' && peek <= 'z') return ScanIdentifier(peek);
+
+  return ScanPunctuation(peek);
+}
+
+bool Scanner::ScanPunctuation(int peek) {
+  Punctuation* trie = punctuation_trie_.LookupChild(peek);
+  if (trie != NULL) {
+    while (Punctuation* next = trie->LookupChild(Peek())) {
+      trie = next;
+      Advance();
+    }
+    if (trie->HasTerminal()) {
+      Token t = trie->terminal();
+      if (t == kSHR) {
+        // Decompose >> into two tokens in case they are closing angle
+        // brackets.  They may be reunited by the parser later.
+        PopTokenBeginMarker(kLT);
+        AddToken(kGT_START);
+        PopTokenBeginMarker(kLT);
+        AddToken(kGT);
+      } else {
+        if (trie->HasPop()) PopTokenBeginMarker(trie->pop());
+        else if (trie->HasPush()) PushTokenBeginMarker(trie->push());
+        AddToken(t);
+      }
+      return (Advance() != 0);
+    }
+    peek = Peek();
+  }
   builder()->ReportError(start_location_ + index_,
                          "Unrecognized character: 0x%x",
                          peek);
   return false;
-}
-
-void Scanner::AddToken(Token token, int value) {
-  TokenInfo info(value << 8 | token, start_location_ + begin_index_);
-  tokens_.Add(info);
 }
 
 void Scanner::PushTokenBeginMarker(Token token) {
@@ -420,6 +189,41 @@ void Scanner::PopTokenBeginMarker(Token token) {
     if (marker.token != kLT && marker.token > token) break;
     begin_marker_stack_.RemoveLast();
   }
+}
+
+Scanner::Scanner(Builder* builder, Zone* zone)
+    : builder_(builder)
+    , tokens_(zone)
+    , begin_marker_stack_(zone)
+    , string_literal_buffer_(zone) {
+#define T(name, string, prescedence) punctuation_trie_.Populate(zone, name, string);
+  PUNCTUATION_LIST(T)
+#undef T
+  AddPair("(", ")");
+  AddPair("<", ">");
+  AddPair("{", "}");
+}
+
+void Scanner::AddPair(const char* push, const char* pop) {
+  Punctuation* trie;
+  // Find opening trie.
+  for (trie = &punctuation_trie_; *push != '\0'; push++) {
+    trie = trie->LookupChild(*push);
+  }
+  Token token = trie->terminal();
+  // When we hit the opening token we should push it.
+  trie->set_push(token);
+  // Find closing trie.
+  for (trie = &punctuation_trie_; *pop != '\0'; pop++) {
+    trie = trie->LookupChild(*pop);
+  }
+  // When we hit the closing token we should pop the opening token.
+  trie->set_pop(token);
+}
+
+void Scanner::AddToken(Token token, int value) {
+  TokenInfo info(value << 8 | token, start_location_ + begin_index_);
+  tokens_.Add(info);
 }
 
 bool Scanner::ScanNumber(int peek) {
@@ -643,16 +447,6 @@ void Scanner::NewString(Token token, int start, int end) {
   AddToken(token, builder()->RegisterString(value));
 }
 
-bool Scanner::ScanSingle(Token token) {
-  AddToken(token);
-  return (Advance() != 0);
-}
-
-bool Scanner::RecognizeSingle(int peek, Token token) {
-  AddToken(token);
-  return (peek != 0);
-}
-
 void Scanner::SkipWhitespace(int peek) {
   ASSERT(IsWhitespace(peek));
   do {
@@ -661,6 +455,8 @@ void Scanner::SkipWhitespace(int peek) {
 }
 
 bool Scanner::SkipSinglelineComment(int peek) {
+  ASSERT(peek == '/');
+  peek = Advance();
   ASSERT(peek == '/');
   do {
     peek = Advance();
@@ -671,6 +467,8 @@ bool Scanner::SkipSinglelineComment(int peek) {
 
 bool Scanner::SkipMultilineComment(int peek) {
   int start = index_;
+  ASSERT(peek == '/');
+  peek = Advance();
   ASSERT(peek == '*');
   peek = Advance();
   int nesting = 1;

@@ -15,20 +15,11 @@ namespace rart {
 
 class TerminalTrieNode : public TrieNode<TerminalTrieNode> {
  public:
-  TerminalTrieNode(Zone* zone, int id)
-    : TrieNode(id),
-      terminal_(-1),
-      is_keyword_(false) {
-  }
+  TerminalTrieNode(Zone* zone, int id) : TrieNode(id) {}
+  TerminalTrieNode() : TrieNode(0) {}
 
-  TerminalTrieNode()
-    : TrieNode(0),
-      terminal_(-1),
-      is_keyword_(false) {
-  }
-
-  int terminal_;
-  bool is_keyword_;
+  int terminal_ = -1;
+  bool is_keyword_ = false;
 };
 
 class Builder : public StackAllocated {

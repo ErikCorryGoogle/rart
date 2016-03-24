@@ -73,8 +73,8 @@ const int kPostfixPrecedence      = 14;
   T(kSTATIC, "static", 0)                                      \
   T(kTYPEDEF, "typedef", 0)                                    \
 
-// List of tokens.
-#define TOKEN_LIST(T)                                          \
+// Non-terminal tokens.
+#define NONTERMINAL_LIST(T)                                    \
   T(kEOF, "EOF", 0)                                            \
   T(kINTEGER, "integer", 0)                                    \
   T(kDOUBLE, "double", 0)                                      \
@@ -82,8 +82,10 @@ const int kPostfixPrecedence      = 14;
   T(kSTRING, "string", 0)                                      \
   T(kSTRING_INTERPOLATION, "", 0)                              \
   T(kSTRING_INTERPOLATION_END, "", 0)                          \
+
+// Tokens that are not keywords (don't look like identifiers).
+#define PUNCTUATION_LIST(T)                                    \
   T(kCOMMA, ",", 0)                                            \
-                                                               \
   T(kLPAREN, "(", kPostfixPrecedence)                          \
   T(kRPAREN, ")", 0)                                           \
   T(kLBRACK, "[", kPostfixPrecedence)                          \
@@ -128,7 +130,6 @@ const int kPostfixPrecedence      = 14;
   /* Shift operators. */                                       \
   T(kSHL, "<<", 11)                                            \
   T(kSHR, ">>", 11)                                            \
-  T(kGT_START, ">", 11)                                        \
                                                                \
   /* Additive operators. */                                    \
   T(kADD, "+", 12)                                             \
@@ -152,12 +153,18 @@ const int kPostfixPrecedence      = 14;
   T(kGT, ">", kRelationalPrecedence)                           \
   T(kLTE, "<=", kRelationalPrecedence)                         \
   T(kGTE, ">=", kRelationalPrecedence)                         \
-                                                               \
+
+// List of tokens.
+#define TOKEN_LIST(T)                                          \
+  NONTERMINAL_LIST(T)                                          \
+  PUNCTUATION_LIST(T)                                          \
   KEYWORD_LIST(T)                                              \
+  /* This overlaps with kGT, so it is special. */              \
+  T(kGT_START, ">", 11)                                        \
 
 enum Token {
 #define T(n, s, p) n,
-TOKEN_LIST(T)
+  TOKEN_LIST(T)
 #undef T
 };
 

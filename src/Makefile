@@ -1,6 +1,6 @@
 CPP=$(HOME)/dartino/sdk/third_party/clang/linux/bin/clang++
 
-CFLAGS=-g -O0 -Wall -Werror -fno-strict-aliasing
+CFLAGS=--std=c++11 -g -O0 -Wall -Werror -fno-strict-aliasing -DDEBUG=1
 
 HFILES=allocation.h assert.h builder.h globals.h list.h list_builder.h os.h parser.h pretty_printer.h scanner.h source.h string_buffer.h test_case.h tokens.h tree.h trie.h utils.h zone.h
 

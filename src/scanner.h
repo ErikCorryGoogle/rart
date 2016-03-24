@@ -14,6 +14,32 @@
 
 namespace rart {
 
+class Punctuation : public TrieNode<Punctuation> {
+ public:
+  void Populate(Zone* zone, Token token, const char* string);
+  Punctuation(Zone* zone, int id) : TrieNode<Punctuation>(id) {}
+  Punctuation() : TrieNode<Punctuation>(kEOF) {}
+
+  bool HasTerminal() { return terminal_ != kEOF; }
+
+  Token terminal() {
+    ASSERT(HasTerminal());
+    return terminal_;
+  }
+
+  Token pop() { return pop_; }
+  Token push() { return push_; }
+  bool HasPop() { return pop_ != kEOF; }
+  bool HasPush() { return push_ != kEOF; }
+  void set_pop(Token pop) { pop_ = pop; }
+  void set_push(Token push) { push_ = push; }
+
+ private:
+  Token terminal_ = kEOF;
+  Token pop_ = kEOF;
+  Token push_ = kEOF;
+};
+
 class Scanner : public StackAllocated {
  public:
   Scanner(Builder* builder, Zone* zone);
@@ -33,10 +59,11 @@ class Scanner : public StackAllocated {
   ListBuilder<TokenBeginMarker, 32> begin_marker_stack_;
   ListBuilder<char, 256> string_literal_buffer_;
 
-  const char* input_;
-  int index_;
+  const char* input_ = NULL;
+  int index_ = -1;
   int begin_index_;
   Location start_location_;
+  Punctuation punctuation_trie_;
 
   Builder* builder() const { return builder_; }
 
@@ -49,19 +76,19 @@ class Scanner : public StackAllocated {
   bool ScanNumber(int peek);
   bool ScanIdentifier(int peek, bool allow_dollar = true);
   bool ScanString(int peek, bool raw);
+  bool ScanPunctuation(int peek);
 
   void AddToken(Token token, int value = -1);
+
+  void AddPair(const char* push, const char* pop);
 
   void PushTokenBeginMarker(Token token);
   void PopTokenBeginMarker(Token token);
 
   // Create a new string token. If string_literal_buffer_ is not empty, the
   // string is created from that buffer. If it's empty, (start, end) is used to
-  // greb a substring from the input.
+  // grab a substring from the input.
   void NewString(Token token, int start, int end);
-
-  inline bool ScanSingle(Token token);
-  inline bool RecognizeSingle(int peek, Token token);
 
   void SkipWhitespace(int peek);
   bool SkipSinglelineComment(int peek);
