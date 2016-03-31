@@ -19,7 +19,7 @@ struct TokenData {
 
 List<TokenData> Scan(Zone* zone, const char* input) {
   Builder builder(zone);
-  Scanner scanner(&builder, zone);
+  Scanner scanner(zone, &builder);
   scanner.Scan(input, Location());
   TokenStream stream(scanner.EncodedTokens());
   ListBuilder<TokenData, 4> tokens(zone);

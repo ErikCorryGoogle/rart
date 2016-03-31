@@ -5,63 +5,35 @@
 #ifndef SRC_TRIE_H_
 #define SRC_TRIE_H_
 
+#include "src/hash_map.h"
 #include "src/zone.h"
 
 namespace rart {
 
-template<typename T, int InitSize = 2>
+template<typename T>
 class TrieNode : public ZoneAllocated {
  public:
-  explicit TrieNode(int id)
-    : children_size_(InitSize),
-      children_(builtin_),
-      id_(id) {
-    memset(builtin_, 0, sizeof(builtin_));
-  }
+  explicit TrieNode(Zone* zone) : map_(zone) {}
 
   inline T* LookupChild(int id) {
-    int index = 0;
-    while (index < children_size_) {
-      T* child = children_[index];
-      if (child == NULL) break;
-      if (child->id_ == id) return child;
-      index++;
-    }
-    return NULL;
+    auto it = map_.Find(id);
+    if (it == map_.End()) return NULL;
+    return it->second;
   }
 
   inline T* Child(Zone* zone, int id) {
-    int index = 0;
-    while (index < children_size_) {
-      T* child = children_[index];
-      if (child == NULL) break;
-      if (child->id_ == id) return child;
-      index++;
-    }
-    return NewChild(zone, index, id);
+    auto it = map_.Find(id);
+    if (it != map_.End()) return it->second;
+    return NewChild(zone, id);
   }
 
  private:
-  T* builtin_[InitSize];
-  int children_size_;
-  T** children_;
-  int id_;
+  HashMap<long, T*> map_;
 
-  T* NewChild(Zone* zone, int index, int id) {
-    if (index == children_size_) {
-      int new_size = children_size_ * 4;
-      T** list = reinterpret_cast<T**>(
-          zone->Allocate(sizeof(T*) * new_size));
-      // Copy old list into new.
-      memmove(list, children_, sizeof(T*) * children_size_);
-      // Clear the rest of the new list.
-      memset(list + children_size_,
-             0,
-             sizeof(T*) * (new_size - children_size_));
-      children_ = list;
-      children_size_ = new_size;
-    }
-    return children_[index] = new(zone) T(zone, id);
+  T* NewChild(Zone* zone, int id) {
+    T* child = new(zone) T(zone);
+    map_.AtPut(zone, id) = child;
+    return child;
   }
 };
 

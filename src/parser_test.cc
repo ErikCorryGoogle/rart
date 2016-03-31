@@ -14,7 +14,7 @@ namespace rart {
 
 TreeNode* ParseNode(Zone* zone, const char* input) {
   Builder builder(zone);
-  Scanner scanner(&builder, zone);
+  Scanner scanner(zone, &builder);
   scanner.Scan(input, Location());
   Parser parser(&builder, scanner.EncodedTokens());
   parser.ParseExpression();

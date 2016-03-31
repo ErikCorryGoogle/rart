@@ -15,8 +15,7 @@ namespace rart {
 
 class TerminalTrieNode : public TrieNode<TerminalTrieNode> {
  public:
-  TerminalTrieNode(Zone* zone, int id) : TrieNode(id) {}
-  TerminalTrieNode() : TrieNode(0) {}
+  explicit TerminalTrieNode(Zone* zone) : TrieNode(zone) {}
 
   int terminal_ = -1;
   bool is_keyword_ = false;

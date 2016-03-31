@@ -132,6 +132,7 @@ bool Scanner::ScanToken() {
       break;
   }
 
+  // Having these inside the switch is not only verbose, it's also 4% slower.
   if (peek >= '0' && peek <= '9') return ScanNumber(peek);
   if (peek >= 'A' && peek <= 'Z') return ScanIdentifier(peek);
   if (peek >= 'a' && peek <= 'z') return ScanIdentifier(peek);
@@ -162,7 +163,6 @@ bool Scanner::ScanPunctuation(int peek) {
       }
       return (Advance() != 0);
     }
-    peek = Peek();
   }
   builder()->ReportError(start_location_ + index_,
                          "Unrecognized character: 0x%x",
@@ -191,11 +191,12 @@ void Scanner::PopTokenBeginMarker(Token token) {
   }
 }
 
-Scanner::Scanner(Builder* builder, Zone* zone)
+Scanner::Scanner(Zone* zone, Builder* builder)
     : builder_(builder)
     , tokens_(zone)
     , begin_marker_stack_(zone)
-    , string_literal_buffer_(zone) {
+    , string_literal_buffer_(zone)
+    , punctuation_trie_(zone) {
 #define T(name, string, prescedence) punctuation_trie_.Populate(zone, name, string);
   PUNCTUATION_LIST(T)
 #undef T

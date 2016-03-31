@@ -24,8 +24,8 @@ KEYWORD_LIST(T)
 Builder::Builder(Zone* zone)
     : zone_(zone)
     , source_(zone)
-    , identifier_root_(new(zone) TerminalTrieNode())
-    , number_root_(new(zone) TerminalTrieNode())
+    , identifier_root_(new(zone) TerminalTrieNode(zone))
+    , number_root_(new(zone) TerminalTrieNode(zone))
     , nodes_(zone)
     , registry_(zone)
     , identifiers_(zone)
@@ -50,7 +50,7 @@ Builder::Builder(Zone* zone)
 
 CompilationUnitNode* Builder::BuildUnit(Location location) {
   Zone zone;
-  Scanner scanner(this, &zone);
+  Scanner scanner(&zone, this);
   scanner.Scan(source_.GetSource(location), location);
   Parser parser(this, scanner.EncodedTokens());
   parser.ParseCompilationUnit();

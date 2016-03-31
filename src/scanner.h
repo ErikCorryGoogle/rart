@@ -17,8 +17,7 @@ namespace rart {
 class Punctuation : public TrieNode<Punctuation> {
  public:
   void Populate(Zone* zone, Token token, const char* string);
-  Punctuation(Zone* zone, int id) : TrieNode<Punctuation>(id) {}
-  Punctuation() : TrieNode<Punctuation>(kEOF) {}
+  explicit Punctuation(Zone* zone) : TrieNode<Punctuation>(zone) {}
 
   bool HasTerminal() { return terminal_ != kEOF; }
 
@@ -42,7 +41,7 @@ class Punctuation : public TrieNode<Punctuation> {
 
 class Scanner : public StackAllocated {
  public:
-  Scanner(Builder* builder, Zone* zone);
+  Scanner(Zone* zone, Builder* builder);
   void Scan(const char* input, Location start_location);
 
   List<TokenInfo> EncodedTokens();
